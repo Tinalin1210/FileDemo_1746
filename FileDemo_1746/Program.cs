@@ -16,11 +16,14 @@ namespace FileDemo_1746
 {
     class Program
     {
-        // 儲存上次檔案內容的變數
-        static string lastFileContent = string.Empty;
+        // 儲存檔案最後修改時間
+        static Dictionary<string, DateTime> fileLastWriteTime = new Dictionary<string, DateTime>();
 
         // 儲存每個檔案的內容
         static Dictionary<string, List<string>> fileContents = new Dictionary<string, List<string>>();
+
+        // 設定檢查的時間間隔（毫秒）
+        static int checkInterval = 2000; // 每2秒檢查一次
 
         static void Main(string[] args)
         {
@@ -47,6 +50,7 @@ namespace FileDemo_1746
                     {
                         List<string> fileContent = new List<string>(File.ReadAllLines(filePath));
                         fileContents[file] = fileContent;
+                        fileLastWriteTime[file] = File.GetLastWriteTime(filePath); // 記錄檔案的初始修改時間
                     }
                     else
                     {
@@ -54,29 +58,8 @@ namespace FileDemo_1746
                     }
                 }
 
-                // 監控目錄中的檔案變動
-                FileSystemWatcher watcher = new FileSystemWatcher(config.DirectoryPath)
-                {
-                    // 監控檔案的更動、檔名變動、檔案大小變動
-                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size
-                };
-
-                // 變動檔案時觸發的事件
-                DateTime lastProcessedTime = DateTime.MinValue;
-
-                watcher.Changed += (sender, e) =>
-                {
-                    // 取得檔案最後寫入的時間
-                    DateTime lastWriteTime = File.GetLastWriteTime(e.FullPath);
-
-                    if (lastWriteTime > lastProcessedTime)
-                    {
-                        OnFileChanged(e);
-                        lastProcessedTime = lastWriteTime;
-                    }
-                };
-
-                watcher.EnableRaisingEvents = true; // 啟動檔案監控
+                // 設定定時器，定期檢查檔案變動
+                Timer timer = new Timer(CheckFiles, config, 0, checkInterval);
 
                 Console.WriteLine("開始監控檔案變動...");
                 Console.WriteLine("按任意鍵結束監控。");
@@ -92,8 +75,8 @@ namespace FileDemo_1746
                     }
                 }
 
-                // 停止檔案監控
-                watcher.EnableRaisingEvents = false;
+                // 停止定時器
+                timer.Dispose();
                 Console.WriteLine("監控已結束。");
             }
             else
@@ -117,10 +100,32 @@ namespace FileDemo_1746
             }
         }
 
-        // 當檔案變動時觸發
-        public static void OnFileChanged(FileSystemEventArgs e)
+        // 定時檢查檔案是否有變動
+        public static void CheckFiles(object state)
         {
-            Console.WriteLine($"檔案變動 (修改): {e.FullPath}");
+            var config = (Config)state;
+
+            foreach (var file in config.FilesToMonitor)
+            {
+                string filePath = Path.Combine(config.DirectoryPath, file);
+                if (File.Exists(filePath))
+                {
+                    DateTime lastWriteTime = File.GetLastWriteTime(filePath);
+
+                    if (lastWriteTime > fileLastWriteTime[file])
+                    {
+                        // 檔案有變動，處理變動
+                        OnFileChanged(file, filePath);
+                        fileLastWriteTime[file] = lastWriteTime; // 更新檔案的最後修改時間
+                    }
+                }
+            }
+        }
+
+        // 當檔案變動時觸發
+        public static void OnFileChanged(string fileName, string filePath)
+        {
+            Console.WriteLine($"檔案變動 (修改): {filePath}");
 
             int retryCount = 3;
 
@@ -131,25 +136,21 @@ namespace FileDemo_1746
                     // 延遲一段時間再讀取檔案，以確保檔案已經完全更新
                     Thread.Sleep(300);
 
-                    string fileContent = File.ReadAllText(e.FullPath);
+                    string fileContent = File.ReadAllText(filePath);
 
                     if (string.IsNullOrWhiteSpace(fileContent))
                     {
                         Console.WriteLine("檔案內容已刪除或清空");
 
-                        lastFileContent = string.Empty;
-                        if (fileContents.ContainsKey(e.Name))
-                        {
-                            fileContents[e.Name].Clear();
-                        }
+                        fileContents[fileName].Clear();
                     }
                     else
                     {
                         // 顯示檔案的新增內容
-                        ShowChanges(fileContent, e.Name);
+                        ShowChanges(fileContent, fileName);
 
                         // 更新檔案內容
-                        fileContents[e.Name] = new List<string>(fileContent.Split(new[] { Environment.NewLine }, StringSplitOptions.None));
+                        fileContents[fileName] = new List<string>(fileContent.Split(new[] { Environment.NewLine }, StringSplitOptions.None));
                     }
 
                     return;
@@ -161,13 +162,13 @@ namespace FileDemo_1746
                 }
             }
 
-            Console.WriteLine($"無法讀取檔案內容: {e.FullPath}");
+            Console.WriteLine($"無法讀取檔案內容: {filePath}");
         }
 
         // 檢查並創建資料夾與檔案
         public static void CheckFolderFiles()
         {
-            string drivePath = @"C:\";
+            string drivePath = @"C:\";  // 確保目錄存在
             string folderName = "FileDemo_1746"; // 你的資料夾名稱
             string folderPath = Path.Combine(drivePath, folderName);
 
