@@ -112,7 +112,7 @@ namespace FileDemo_1746
             }
             catch (Exception ex)
             {
-                Console.WriteLine("讀取配置檔案錯誤: " + ex.Message);
+                Console.WriteLine("讀取配置檔案錯誤: " + ex);
                 return null;
             }
         }
