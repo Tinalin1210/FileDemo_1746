@@ -7,9 +7,9 @@ using System.Threading;  // 引入多執行緒相關的命名空間
 
 public class Config
 {
-    // 存儲目錄路徑與要監控的檔案
-    public string DirectoryPath { get; set; }
-    public List<string> FilesToMonitor { get; set; }
+    
+    public string DirectoryPath { get; set; }          //用來儲存要監控的目錄路徑。
+    public List<string> FilesToMonitor { get; set; }  // 用來儲存需要監控的檔案名稱列表。
 }
 
 namespace FileDemo_1746
@@ -20,6 +20,7 @@ namespace FileDemo_1746
         static string lastFileContent = string.Empty;
 
         // 儲存每個檔案的內容
+        //其中 string ，代表檔案的名稱 而 List<string>，代表檔案的內容
         static Dictionary<string, List<string>> fileContents = new Dictionary<string, List<string>>();
 
         static void Main(string[] args)
@@ -27,7 +28,7 @@ namespace FileDemo_1746
             // 先檢查並創建資料夾與檔案
             CheckFolderFiles();
 
-            // 讀取配置檔案 (config.json)，這樣就可以設定監控的目錄和檔案
+            //讀取並反序列化配置檔案（config.json）。該方法會將 JSON 格式的配置檔案轉換為 Config 類型的物件
             string configPath = "config.json";
             Config config = LoadConfig(configPath);
 
@@ -37,16 +38,17 @@ namespace FileDemo_1746
                 Console.WriteLine("監控檔案:");
 
                 // 顯示監控的檔案列表
-                foreach (var file in config.FilesToMonitor)
+                foreach (var file in config.FilesToMonitor) //列表中的每個檔案名稱。這些檔案是需要被監控的檔案。
                 {
                     Console.WriteLine(" - " + file);
 
-                    // 讀取檔案內容並儲存到變數中
+                    // 組合目錄路徑與檔案名稱
                     string filePath = Path.Combine(config.DirectoryPath, file);
                     if (File.Exists(filePath))
                     {
+                        //檔案存在，就讀取它的內容
                         List<string> fileContent = new List<string>(File.ReadAllLines(filePath));
-                        fileContents[file] = fileContent;
+                        fileContents[file] = fileContent;  //存入fileContents字典中
                     }
                     else
                     {
@@ -54,19 +56,21 @@ namespace FileDemo_1746
                     }
                 }
 
-                // 監控目錄中的檔案變動
+                //創建一個 FileSystemWatcher 物件，並設定它監控指定的目錄
                 FileSystemWatcher watcher = new FileSystemWatcher(config.DirectoryPath)
                 {
                     // 監控檔案的更動、檔名變動、檔案大小變動
                     NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size
                 };
 
-                // 變動檔案時觸發的事件
+                // 來記錄最後一次處理檔案變動的時間，避免重複處理已經處理過的檔案變動。
                 DateTime lastProcessedTime = DateTime.MinValue;
 
+                //為 FileSystemWatcher 的 Changed 事件添加一個事件處理器，當檔案發生變動時，該事件處理器會被觸發。
                 watcher.Changed += (sender, e) =>
                 {
                     // 取得檔案最後寫入的時間
+                    //這樣可以確定檔案在上次處理後是否已經被修改。
                     DateTime lastWriteTime = File.GetLastWriteTime(e.FullPath);
 
                     if (lastWriteTime > lastProcessedTime)
@@ -102,6 +106,7 @@ namespace FileDemo_1746
             }
         }
 
+        //反序列化
         public static Config LoadConfig(string path)
         {
             try
@@ -117,9 +122,11 @@ namespace FileDemo_1746
             }
         }
 
-        // 當檔案變動時觸發
+
+        // 當檔案變動時觸發  
         public static void OnFileChanged(FileSystemEventArgs e)
         {
+            //e 檔案路徑
             Console.WriteLine($"檔案變動 (修改): {e.FullPath}");
 
             int retryCount = 3;
@@ -133,12 +140,12 @@ namespace FileDemo_1746
 
                     string fileContent = File.ReadAllText(e.FullPath);
 
-                    if (string.IsNullOrWhiteSpace(fileContent))
+                    if (string.IsNullOrWhiteSpace(fileContent))  //檢查檔案內容是否為空
                     {
                         Console.WriteLine("檔案內容已刪除或清空");
 
-                        lastFileContent = string.Empty;
-                        if (fileContents.ContainsKey(e.Name))
+                        lastFileContent = string.Empty;  //清空之前儲存的檔案內容
+                        if (fileContents.ContainsKey(e.Name)) //檢查是否存在對應檔案名有資料
                         {
                             fileContents[e.Name].Clear();
                         }
@@ -148,7 +155,7 @@ namespace FileDemo_1746
                         // 顯示檔案的新增內容
                         ShowChanges(fileContent, e.Name);
 
-                        // 更新檔案內容
+                        // 最新內容存儲到fileContents中，方便後續的比對和顯示變更。
                         fileContents[e.Name] = new List<string>(fileContent.Split(new[] { Environment.NewLine }, StringSplitOptions.None));
                     }
 
@@ -168,25 +175,27 @@ namespace FileDemo_1746
         public static void CheckFolderFiles()
         {
             string drivePath = @"C:\";
-            string folderName = "FileDemo_1746"; // 你的資料夾名稱
-            string folderPath = Path.Combine(drivePath, folderName);
+            string folderName = "FileDemo_1746"; // 資料夾名稱
+            string folderPath = Path.Combine(drivePath, folderName);  //組合在一起完整的資料夾路徑
 
             // 確保資料夾存在
             if (!Directory.Exists(folderPath))
             {
-                Directory.CreateDirectory(folderPath);
+                Directory.CreateDirectory(folderPath);  //創建該資料夾
                 Console.WriteLine($"資料夾 '{folderName}' 已建立。");
             }
 
             // 監控的預設檔案
-            List<string> defaultFiles = new List<string> { "File1.txt", "File2.txt" };
+            List<string> defaultFiles = new List<string> { "File1.txt", "File2.txt" }; //預設檔案名稱的列表
 
-            foreach (var fileName in defaultFiles)
+            foreach (var fileName in defaultFiles)  //逐一檢查每個檔案
             {
-                string filePath = Path.Combine(folderPath, fileName);
-                if (!File.Exists(filePath))
+                string filePath = Path.Combine(folderPath, fileName);  //檔案的完整路徑
+                if (!File.Exists(filePath)) //檢查檔案室否存在
                 {
-                    using (File.Create(filePath)) { } // 確保釋放資源
+                    //使用 File.Create(filePath) 創建檔案，並且 using 語法確保檔案創建後會正確釋放資源。
+                    //using 是用來確保一個物件在不再需要時能夠自動釋放資源。
+                    using (File.Create(filePath)) { } 
                     Console.WriteLine($"檔案 '{fileName}' 已建立。");
                 }
             }
@@ -196,11 +205,11 @@ namespace FileDemo_1746
         public static void ShowChanges(string currentContent, string fileName)
         {
             // 將當前檔案內容與舊內容
-            var currentLines = currentContent.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            var oldLines = fileContents[fileName];
+            var currentLines = currentContent.Split(new[] { Environment.NewLine }, StringSplitOptions.None);  //儲存為一個字串陣列
+            var oldLines = fileContents[fileName];   //取出先前存儲的檔案內容。
 
             int maxLength = Math.Max(currentLines.Length, oldLines.Count); // 取較長的長度
-            List<string> paddedOldLines = new List<string>(oldLines);
+            List<string> paddedOldLines = new List<string>(oldLines); //創建一個新的列表 paddedOldLines，並將 oldLines 中的所有內容複製過來。
 
             while (paddedOldLines.Count < maxLength)
             {

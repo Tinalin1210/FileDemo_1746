@@ -1,5 +1,5 @@
 ﻿{
-  "directoryPath": "C:\\FileDemo_1746",
+  "directoryPath": "C:\\FileDemo_1746", //監控的資料夾的路徑
   "filesToMonitor": [
     "File1.txt",
     "File2.txt"
