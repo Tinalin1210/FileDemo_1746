@@ -7,9 +7,9 @@ using System.Threading;  // 引入多執行緒相關的命名空間
 
 public class Config
 {
-    // 存儲目錄路徑與要監控的檔案
-    public string DirectoryPath { get; set; }
-    public List<string> FilesToMonitor { get; set; }
+    
+    public string DirectoryPath { get; set; }          //用來儲存要監控的目錄路徑。
+    public List<string> FilesToMonitor { get; set; }   //// 用來儲存需要監控的檔案名稱列表。
 }
 
 namespace FileDemo_1746
@@ -45,11 +45,11 @@ namespace FileDemo_1746
                     Console.WriteLine(" - " + file);
 
                     // 讀取檔案內容並儲存到變數中
-                    string filePath = Path.Combine(config.DirectoryPath, file);
+                    string filePath = Path.Combine(config.DirectoryPath, file);  //組合成完整的檔案路徑。
                     if (File.Exists(filePath))
                     {
-                        List<string> fileContent = new List<string>(File.ReadAllLines(filePath));
-                        fileContents[file] = fileContent;
+                        List<string> fileContent = new List<string>(File.ReadAllLines(filePath));  //讀檔存fileContent
+                        fileContents[file] = fileContent;    
                         fileLastWriteTime[file] = File.GetLastWriteTime(filePath); // 記錄檔案的初始修改時間
                     }
                     else
@@ -58,8 +58,8 @@ namespace FileDemo_1746
                     }
                 }
 
-                // 設定定時器，定期檢查檔案變動
-                Timer timer = new Timer(CheckFiles, config, 0, checkInterval);
+                // 設定定時器，定期檢查檔案變動    呼叫 CheckFiles  config = LoadConfig(configPath)  0 立即開始  checkInterval 檢查的時間間隔
+                Timer timer = new Timer(CheckFiles, config, 0, checkInterval);  
 
                 Console.WriteLine("開始監控檔案變動...");
                 Console.WriteLine("按任意鍵結束監控。");
@@ -103,14 +103,13 @@ namespace FileDemo_1746
         // 定時檢查檔案是否有變動
         public static void CheckFiles(object state)
         {
-            var config = (Config)state;
-
-            foreach (var file in config.FilesToMonitor)
+            var config = (Config)state;  
+            foreach (var file in config.FilesToMonitor)   //找config.FilesToMonitor 中的所有檔案名稱
             {
-                string filePath = Path.Combine(config.DirectoryPath, file);
+                string filePath = Path.Combine(config.DirectoryPath, file);  //組合出檔案的完整路徑 
                 if (File.Exists(filePath))
                 {
-                    DateTime lastWriteTime = File.GetLastWriteTime(filePath);
+                    DateTime lastWriteTime = File.GetLastWriteTime(filePath); //獲取檔案最後修改時間。
 
                     if (lastWriteTime > fileLastWriteTime[file])
                     {
@@ -138,7 +137,7 @@ namespace FileDemo_1746
 
                     string fileContent = File.ReadAllText(filePath);
 
-                    if (string.IsNullOrWhiteSpace(fileContent))
+                    if (string.IsNullOrWhiteSpace(fileContent))   //檢查檔案內容是否為空
                     {
                         Console.WriteLine("檔案內容已刪除或清空");
 
@@ -149,7 +148,7 @@ namespace FileDemo_1746
                         // 顯示檔案的新增內容
                         ShowChanges(fileContent, fileName);
 
-                        // 更新檔案內容
+                        // 最新內容存儲到fileContents中，方便後續的比對和顯示變更。
                         fileContents[fileName] = new List<string>(fileContent.Split(new[] { Environment.NewLine }, StringSplitOptions.None));
                     }
 
@@ -168,25 +167,26 @@ namespace FileDemo_1746
         // 檢查並創建資料夾與檔案
         public static void CheckFolderFiles()
         {
-            string drivePath = @"C:\";  // 確保目錄存在
-            string folderName = "FileDemo_1746"; // 你的資料夾名稱
-            string folderPath = Path.Combine(drivePath, folderName);
+            string drivePath = @"C:\"; 
+            string folderName = "FileDemo_1746"; // 資料夾名稱
+            string folderPath = Path.Combine(drivePath, folderName);  //組合在一起完整的資料夾路徑
 
             // 確保資料夾存在
             if (!Directory.Exists(folderPath))
             {
-                Directory.CreateDirectory(folderPath);
+                Directory.CreateDirectory(folderPath);   //創建該資料夾
                 Console.WriteLine($"資料夾 '{folderName}' 已建立。");
             }
 
             // 監控的預設檔案
-            List<string> defaultFiles = new List<string> { "File1.txt", "File2.txt" };
+            List<string> defaultFiles = new List<string> { "File1.txt", "File2.txt" }; //預設檔案名稱的列表
 
-            foreach (var fileName in defaultFiles)
+            foreach (var fileName in defaultFiles) //逐一檢查每個檔案
             {
-                string filePath = Path.Combine(folderPath, fileName);
-                if (!File.Exists(filePath))
+                string filePath = Path.Combine(folderPath, fileName);  //檔案的完整路徑
+                if (!File.Exists(filePath)) //檢查檔案室否存在
                 {
+                    //using 是用來確保一個物件在不再需要時能夠自動釋放資源。
                     using (File.Create(filePath)) { } // 確保釋放資源
                     Console.WriteLine($"檔案 '{fileName}' 已建立。");
                 }
@@ -201,7 +201,7 @@ namespace FileDemo_1746
             var oldLines = fileContents[fileName];
 
             int maxLength = Math.Max(currentLines.Length, oldLines.Count); // 取較長的長度
-            List<string> paddedOldLines = new List<string>(oldLines);
+            List<string> paddedOldLines = new List<string>(oldLines); //創建一個新的列表 paddedOldLines，並將 oldLines 中的所有內容複製過來。
 
             while (paddedOldLines.Count < maxLength)
             {
